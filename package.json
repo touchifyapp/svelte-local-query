@@ -1,0 +1,67 @@
+{
+	"name": "svelte-local-query",
+	"version": "0.1.0",
+	"description": "SvelteKit remote functions API (query, command, form) for local, client-only use — no backend required.",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/touchifyapp/svelte-local-query.git"
+	},
+	"keywords": [
+		"svelte",
+		"sveltekit",
+		"remote-functions",
+		"query",
+		"command",
+		"form",
+		"spa",
+		"runes"
+	],
+	"type": "module",
+	"svelte": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"svelte": "./dist/index.js",
+			"default": "./dist/index.js"
+		}
+	},
+	"files": [
+		"dist",
+		"!dist/**/*.test.*",
+		"!dist/**/*.spec.*"
+	],
+	"sideEffects": false,
+	"scripts": {
+		"dev": "vite dev",
+		"build": "svelte-package && publint",
+		"check": "svelte-check --tsconfig ./tsconfig.json",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"format": "prettier --write .",
+		"lint": "prettier --check ."
+	},
+	"peerDependencies": {
+		"svelte": "^5.29.0"
+	},
+	"dependencies": {
+		"@standard-schema/spec": "^1.0.0",
+		"esm-env": "^1.2.0"
+	},
+	"devDependencies": {
+		"@sveltejs/package": "^2.3.0",
+		"@sveltejs/vite-plugin-svelte": "^5.0.0",
+		"@types/node": "^26.1.1",
+		"jsdom": "^26.0.0",
+		"prettier": "^3.4.0",
+		"prettier-plugin-svelte": "^3.3.0",
+		"publint": "^0.3.0",
+		"svelte": "^5.29.0",
+		"svelte-check": "^4.1.0",
+		"typescript": "^5.8.0",
+		"valibot": "^1.0.0",
+		"vite": "^6.0.0",
+		"vitest": "^3.0.0"
+	}
+}
