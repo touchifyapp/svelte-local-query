@@ -3,6 +3,8 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
 	plugins: [svelte()],
+	// `npm run dev` serves the manual end-to-end playground page
+	root: process.env.VITEST ? undefined : 'playground',
 	resolve: process.env.VITEST
 		? {
 				// vitest runs in jsdom; resolve svelte to its client (browser) build
