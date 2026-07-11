@@ -40,11 +40,9 @@ export class CacheController<R> {
 	 * proxy is GC'd, we decrement that entry's `proxy_count` and schedule a deferred
 	 * eviction check.
 	 */
-	#proxy_finalizer = new FinalizationRegistry<ProxyFinalizerToken<R>>(
-		({ entry, id, payload }) => {
-			this.deref(entry, id, payload);
-		}
-	);
+	#proxy_finalizer = new FinalizationRegistry<ProxyFinalizerToken<R>>(({ entry, id, payload }) => {
+		this.deref(entry, id, payload);
+	});
 
 	/**
 	 * @param cache_map

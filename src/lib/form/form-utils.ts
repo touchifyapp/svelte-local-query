@@ -63,9 +63,7 @@ export function convert_formdata(data: FormData): Record<string, any> {
 		}
 
 		if (values.length > 1 && !is_array) {
-			throw new Error(
-				`Form cannot contain duplicated keys — "${key}" has ${values.length} values`
-			);
+			throw new Error(`Form cannot contain duplicated keys — "${key}" has ${values.length} values`);
 		}
 
 		set_nested_value(result, key, is_array ? values : values[0]);
@@ -164,9 +162,7 @@ export function normalize_issue(issue: StandardSchemaV1.Issue, server = false): 
 	return normalized;
 }
 
-export function flatten_issues(
-	issues: InternalFormIssue[]
-): Record<string, InternalFormIssue[]> {
+export function flatten_issues(issues: InternalFormIssue[]): Record<string, InternalFormIssue[]> {
 	const result: Record<string, InternalFormIssue[]> = {};
 
 	for (const issue of issues) {
@@ -252,10 +248,7 @@ export function create_field_proxy(
 	target: any,
 	get_input: () => Record<string, any>,
 	set_input: (path: Array<string | number>, value: any) => void,
-	get_issues: (
-		path?: Array<string | number>,
-		all?: boolean
-	) => Record<string, InternalFormIssue[]>,
+	get_issues: (path?: Array<string | number>, all?: boolean) => Record<string, InternalFormIssue[]>,
 	path: Array<string | number> = []
 ): any {
 	const get_value = () => {

@@ -107,9 +107,7 @@ export class SharedIterator<T> {
 		const subscriber: Subscriber<T> = {
 			pending: options?.initial_value ? { value: options.initial_value.value } : null,
 			pending_error:
-				this.#closed && this.#terminal_error !== undefined
-					? { error: this.#terminal_error }
-					: null,
+				this.#closed && this.#terminal_error !== undefined ? { error: this.#terminal_error } : null,
 			finished: this.#closed && this.#terminal_error === undefined,
 			waiting_resolve: null,
 			waiting_reject: null

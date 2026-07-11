@@ -261,8 +261,7 @@ function create_form(
 					// if the developer took control of updates via `.updates(...)` (even with
 					// no arguments), or refreshed/set queries inside the handler, don't
 					// refresh everything
-					const should_invalidate =
-						updates_state.refreshes === null && !outcome.handler_refreshed;
+					const should_invalidate = updates_state.refreshes === null && !outcome.handler_refreshed;
 
 					if (outcome.redirect !== null) {
 						if (updates_state.refreshes !== null) {
@@ -345,15 +344,18 @@ function create_form(
 			const { enhance: _enhance, ...descriptors } = Object.getOwnPropertyDescriptors(instance);
 			void _enhance;
 
-			return Object.defineProperties({}, {
-				...descriptors,
-				element: {
-					value: form
-				},
-				submit: {
-					value: () => submit(form_data, false)
+			return Object.defineProperties(
+				{},
+				{
+					...descriptors,
+					element: {
+						value: form
+					},
+					submit: {
+						value: () => submit(form_data, false)
+					}
 				}
-			}) as LocalFormEnhanceInstance<any, any>;
+			) as LocalFormEnhanceInstance<any, any>;
 		}
 
 		async function preflight(form_data: FormData): Promise<boolean> {
@@ -593,9 +595,8 @@ function create_form(
 						throw new Error('Cannot call submit() before the form is attached');
 					}
 
-					const default_submitter = element.querySelector(
-						'button:not([type]), [type="submit"]'
-					) as HTMLElement | undefined;
+					const default_submitter = element.querySelector('button:not([type]), [type="submit"]') as
+						HTMLElement | undefined;
 
 					const form_data = new FormData(element, default_submitter);
 
@@ -675,9 +676,8 @@ function create_form(
 					// which takes time to propagate
 					await tick();
 
-					const default_submitter = element.querySelector(
-						'button:not([type]), [type="submit"]'
-					) as HTMLElement | undefined;
+					const default_submitter = element.querySelector('button:not([type]), [type="submit"]') as
+						HTMLElement | undefined;
 
 					const form_data = new FormData(element, default_submitter);
 
@@ -817,17 +817,11 @@ export function form<Input extends LocalFormInput, Output>(
 	validate: 'unchecked',
 	fn: (data: Input, issue: InvalidField<Input>) => MaybePromise<Output>
 ): LocalForm<Input, Output>;
-export function form<
-	Schema extends StandardSchemaV1<LocalFormInput, Record<string, any>>,
-	Output
->(
+export function form<Schema extends StandardSchemaV1<LocalFormInput, Record<string, any>>, Output>(
 	validate: true extends HasNonOptionalBoolean<InferInput<Schema>>
 		? 'Error: All booleans in form schemas must be optional (e.g. `v.optional(v.boolean(), false)`) because checkbox inputs do not send a false value when unchecked.'
 		: Schema,
-	fn: (
-		data: InferOutput<Schema>,
-		issue: InvalidField<InferInput<Schema>>
-	) => MaybePromise<Output>
+	fn: (data: InferOutput<Schema>, issue: InvalidField<InferInput<Schema>>) => MaybePromise<Output>
 ): LocalForm<InferInput<Schema>, Output>;
 export function form(
 	validate_or_fn: Validator | ((data?: any, issue?: any) => unknown),

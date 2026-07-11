@@ -70,7 +70,10 @@ export class LiveQuery<T> {
 	}
 
 	async #main(
-		{ on_connect, on_connect_failed }: {
+		{
+			on_connect,
+			on_connect_failed
+		}: {
 			on_connect: () => void;
 			on_connect_failed: (reason?: unknown) => void;
 		} = { on_connect: noop, on_connect_failed: noop }
@@ -79,12 +82,19 @@ export class LiveQuery<T> {
 		if (this.#interrupt) return;
 
 		const { promise: stopped, resolve: on_stop } = with_resolvers<void>();
+		const { promise: interruption, resolve: signal_interrupt } = with_resolvers<'interrupted'>();
 		let connected = false;
 		let interrupted = false;
 		let iterator: AsyncIterator<T> | null = null;
 
 		this.#interrupt = () => {
 			interrupted = true;
+			// Wake the loop below even if the iterable is suspended on a pending await —
+			// `AsyncGenerator.return()` queues behind the pending `next()` and would
+			// otherwise block the interrupt indefinitely.
+			signal_interrupt('interrupted');
+			// Best-effort cleanup: the generator's `finally` blocks run once its
+			// current await settles (immediately, if it is suspended at a `yield`).
 			void iterator?.return?.().catch(noop);
 			return stopped;
 		};
@@ -100,9 +110,13 @@ export class LiveQuery<T> {
 				on_connect();
 
 				while (!interrupted) {
-					const { done, value } = await iterator.next();
-					if (done || interrupted) break;
-					this.set(value);
+					const next = iterator.next();
+					// if the interrupt wins the race, a later rejection of this pending
+					// `next()` must not become an unhandled rejection
+					next.catch(noop);
+					const result = await Promise.race([next, interruption]);
+					if (result === 'interrupted' || interrupted || result.done) break;
+					this.set(result.value);
 				}
 
 				if (!interrupted) {
