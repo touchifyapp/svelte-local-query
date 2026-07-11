@@ -277,7 +277,7 @@ describe('form', () => {
 
 	test('for(key) creates isolated instances and injects the key as data.id', async () => {
 		const seen: unknown[] = [];
-		const my_form = form('unchecked', async (data: { id?: unknown; note: string }) => {
+		const my_form = form('unchecked', async (data: { id?: string; note: string }) => {
 			seen.push(data);
 			return data.note;
 		});
