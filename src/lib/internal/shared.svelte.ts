@@ -29,9 +29,8 @@ export const query_map = new Map<string, Map<string, CacheEntry<QueryResource>>>
 export const live_query_map = new Map<string, Map<string, CacheEntry<LiveQueryResource>>>();
 
 export const query_cache = new CacheController<QueryResource>(query_map);
-export const live_query_cache = new CacheController<LiveQueryResource>(
-	live_query_map,
-	(resource) => resource.destroy()
+export const live_query_cache = new CacheController<LiveQueryResource>(live_query_map, (resource) =>
+	resource.destroy()
 );
 
 /**
@@ -155,7 +154,11 @@ export function categorize_updates(updates: LocalQueryUpdate[]): {
 			continue;
 		}
 
-		if (typeof update === 'object' && update !== null && Object.hasOwn(update, QUERY_RESOURCE_KEY)) {
+		if (
+			typeof update === 'object' &&
+			update !== null &&
+			Object.hasOwn(update, QUERY_RESOURCE_KEY)
+		) {
 			// this is a query instance, so we just need to refresh it
 			refreshes.add((update as unknown as Record<symbol, string>)[QUERY_RESOURCE_KEY] as string);
 			continue;

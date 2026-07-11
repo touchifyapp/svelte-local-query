@@ -188,10 +188,9 @@ export interface QueryFunction {
 	 * observers, timers, ...).
 	 */
 	live: {
-		<Output>(fn: (arg: void) => LiveQueryHandlerResult<Output>): LocalLiveQueryFunction<
-			void,
-			Output
-		>;
+		<Output>(
+			fn: (arg: void) => LiveQueryHandlerResult<Output>
+		): LocalLiveQueryFunction<void, Output>;
 		<Input, Output>(
 			validate: 'unchecked',
 			fn: (arg: Input) => LiveQueryHandlerResult<Output>

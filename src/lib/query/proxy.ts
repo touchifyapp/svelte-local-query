@@ -111,13 +111,7 @@ export class QueryProxy<T> {
 	get then(): Promise<T>['then'] {
 		pin_in_effect(query_map, cache, this.#id, this.#payload);
 		const cached = this.#get_cached_query();
-		return pin_while_resolving(
-			query_map,
-			cache,
-			this.#id,
-			this.#payload,
-			cached.then.bind(cached)
-		);
+		return pin_while_resolving(query_map, cache, this.#id, this.#payload, cached.then.bind(cached));
 	}
 
 	get catch(): Promise<T>['catch'] {
