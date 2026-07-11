@@ -286,7 +286,7 @@ describe('form', () => {
 		const second = my_form.for('todo-2');
 		expect(first).not.toBe(second);
 
-		attach(first as LocalForm<any, any>, { note: 'first' });
+		attach(first as unknown as LocalForm<any, any>, { note: 'first' });
 		await expect(first.submit()).resolves.toBe(true);
 
 		expect(seen).toEqual([{ id: 'todo-1', note: 'first' }]);
