@@ -1,0 +1,29 @@
+{
+	"permissions": {
+		"allow": [
+			"Bash(npm test:*)",
+			"Bash(npm run test:*)",
+			"Bash(npm run check:*)",
+			"Bash(npm run build:*)",
+			"Bash(npm run lint:*)",
+			"Bash(npm run format:*)",
+			"Bash(npx vitest:*)",
+			"Bash(npx svelte-check:*)",
+			"Bash(npx prettier:*)",
+			"Bash(npx svelte-package:*)",
+			"Bash(npx publint:*)"
+		]
+	},
+	"extraKnownMarketplaces": {
+		"claude-code-plugins": {
+			"source": {
+				"source": "github",
+				"repo": "anthropics/claude-code-plugins"
+			}
+		}
+	},
+	"enabledPlugins": {
+		"typescript-lsp@claude-code-plugins": true,
+		"svelte@claude-code-plugins": true
+	}
+}
