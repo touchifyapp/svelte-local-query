@@ -86,6 +86,22 @@ describe('query.batch', () => {
 		await expect(b).rejects.toThrowError('no 2');
 	});
 
+	test('a bare handler infers the argument type and skips validation', async () => {
+		const batches: number[][] = [];
+		const get = query.batch((ids: number[]) => {
+			batches.push(ids);
+			return (id: number) => id * 10;
+		});
+
+		const [a, b] = await Promise.all([get(1), get(2)]);
+
+		expect(batches).toEqual([[1, 2]]);
+		expect([a, b]).toEqual([10, 20]);
+
+		// @ts-expect-error string is not assignable to number
+		void get('nope');
+	});
+
 	test('an argument failing validation only rejects its own query', async () => {
 		const batches: number[][] = [];
 		const get = query.batch(v.number(), async (ids) => {

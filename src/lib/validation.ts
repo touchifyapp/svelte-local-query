@@ -76,7 +76,9 @@ export async function validate_arg<T>(validate: Validator, arg: unknown): Promis
 		if (DEV && arg !== undefined) {
 			throw new Error(
 				'This function does not take an argument. ' +
-					'To accept one, declare it with a schema or with `"unchecked"`.'
+					'To accept one, declare the handler with a parameter (its TypeScript type ' +
+					'becomes the argument type), or use a schema or `"unchecked"`. Note that ' +
+					'handlers with only default/rest parameters are treated as argument-less.'
 			);
 		}
 		return undefined as T;
@@ -98,13 +100,26 @@ export async function validate_arg<T>(validate: Validator, arg: unknown): Promis
 /**
  * Split the `(validate, fn)` / `(fn)` overloaded arguments used by
  * `query`/`command`/`form`/`query.batch`/`query.live`.
+ *
+ * When declared as a bare handler, the handler's arity decides the semantics
+ * (unlike SvelteKit, where `query(fn)` is strictly argument-less — see
+ * DIFFERENCES.md): a handler with at least one declared parameter accepts an
+ * argument typed by TypeScript alone, so the value passes through unvalidated
+ * (same as `'unchecked'`). A zero-parameter handler stays argument-less.
+ *
+ * Caveat: handlers with only default/rest parameters (`(arg = {}) => ...`)
+ * have `fn.length === 0` and are therefore treated as argument-less.
  */
 export function parse_declaration<F>(
 	validate_or_fn: Validator | F,
 	maybe_fn: F | undefined
 ): { validate: Validator; fn: F } {
 	if (maybe_fn === undefined) {
-		return { validate: undefined, fn: validate_or_fn as F };
+		const fn = validate_or_fn as F;
+		return {
+			validate: (fn as (...args: never[]) => unknown).length >= 1 ? 'unchecked' : undefined,
+			fn
+		};
 	}
 
 	return { validate: validate_or_fn as Validator, fn: maybe_fn };

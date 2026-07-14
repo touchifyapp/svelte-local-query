@@ -147,6 +147,19 @@ describe('command', () => {
 		);
 	});
 
+	test('a bare handler with a parameter accepts an argument without validation', async () => {
+		const add = command(({ a, b }: { a: number; b: number }) => a + b);
+
+		await expect(add({ a: 1, b: 2 })).resolves.toBe(3);
+
+		// runtime lies are allowed — TypeScript is the only guard
+		const typeof_arg = command((n: number) => typeof n);
+		await expect(typeof_arg('42' as unknown as number)).resolves.toBe('string');
+
+		// @ts-expect-error string is not assignable to { a: number; b: number }
+		void add('nope');
+	});
+
 	test('redirects are not allowed in commands', async () => {
 		const run = command(async () => {
 			redirect('/somewhere');

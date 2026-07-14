@@ -50,10 +50,15 @@ interface Batched {
 	resolvers: Array<{ resolve: (value: any) => void; reject: (error: unknown) => void }>;
 }
 
+type BatchHandler = (args: any[]) => MaybePromise<(arg: any, idx: number) => unknown>;
+
 function create_query_batch(
-	validate: StandardSchemaV1 | 'unchecked',
-	fn: (args: any[]) => MaybePromise<(arg: any, idx: number) => unknown>
+	validate_or_fn: StandardSchemaV1 | 'unchecked' | BatchHandler,
+	maybe_fn?: BatchHandler
 ): LocalQueryFunction<any, any> {
+	// a batch handler always receives the args array, so a bare declaration simply
+	// means "unvalidated" — there is no argument-less variant to distinguish
+	const { validate = 'unchecked', fn } = parse_declaration(validate_or_fn, maybe_fn);
 	const id = next_id('query.batch');
 
 	let batching = new Map<string, Batched>();
@@ -146,6 +151,17 @@ export interface QueryFunction {
 	 */
 	<Output>(fn: () => MaybePromise<Output>): LocalQueryFunction<void, Output>;
 	/**
+	 * Define a query whose argument type is inferred from the handler's parameter —
+	 * no runtime validation, TypeScript only. Not available in SvelteKit (arguments
+	 * cross a trust boundary there); locally the handler's signature is authoritative.
+	 *
+	 * ```ts
+	 * const getPosts = query(({ filter, sort }: { filter?: string; sort?: string }) => ...);
+	 * getPosts({ filter: 'name eq Claude' });
+	 * ```
+	 */
+	<Input, Output>(fn: (arg: Input) => MaybePromise<Output>): LocalQueryFunction<Input, Output>;
+	/**
 	 * Define a query taking an argument without runtime validation.
 	 */
 	<Input, Output>(
@@ -169,6 +185,9 @@ export interface QueryFunction {
 	 */
 	batch: {
 		<Input, Output>(
+			fn: (args: Input[]) => MaybePromise<(arg: Input, idx: number) => Output>
+		): LocalQueryFunction<Input, Output>;
+		<Input, Output>(
 			validate: 'unchecked',
 			fn: (args: Input[]) => MaybePromise<(arg: Input, idx: number) => Output>
 		): LocalQueryFunction<Input, Output>;
@@ -191,6 +210,9 @@ export interface QueryFunction {
 		<Output>(
 			fn: (arg: void) => LiveQueryHandlerResult<Output>
 		): LocalLiveQueryFunction<void, Output>;
+		<Input, Output>(
+			fn: (arg: Input) => LiveQueryHandlerResult<Output>
+		): LocalLiveQueryFunction<Input, Output>;
 		<Input, Output>(
 			validate: 'unchecked',
 			fn: (arg: Input) => LiveQueryHandlerResult<Output>

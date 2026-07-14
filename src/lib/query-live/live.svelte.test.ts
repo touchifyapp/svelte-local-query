@@ -190,6 +190,17 @@ describe('query.live', () => {
 		await expect(q).rejects.toSatisfy(isValidationError);
 	});
 
+	test('a bare handler with a parameter infers the argument type and skips validation', async () => {
+		const live = query.live(async function* (room: string) {
+			yield `joined ${room}`;
+		});
+
+		await expect(live('lobby')).resolves.toBe('joined lobby');
+
+		// @ts-expect-error number is not assignable to string
+		void live(42);
+	});
+
 	test('a command updates() targeting a live query reconnects it', async () => {
 		let value = 0;
 		const live = query.live(async function* () {

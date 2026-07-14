@@ -22,12 +22,12 @@ export const getTodos = query(async () => {
 	return todos;
 });
 
-export const getLikes = query('unchecked', async (id: string) => {
+export const getLikes = query(async (id: string) => {
 	await delay();
 	return todos.find((todo) => todo.id === id)?.likes ?? 0;
 });
 
-export const addLike = command('unchecked', async (id: string) => {
+export const addLike = command(async (id: string) => {
 	await delay();
 	todos = todos.map((todo) => (todo.id === id ? { ...todo, likes: todo.likes + 1 } : todo));
 });

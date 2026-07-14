@@ -228,6 +228,52 @@ describe('query', () => {
 		expect(q.current).toEqual([1, 2]);
 	});
 
+	describe('TypeScript-inferred arguments', () => {
+		test('a bare handler with a parameter accepts an argument without validation', async () => {
+			const get = query(({ filter, sort }: { filter?: string; sort?: string }) => {
+				return `${filter ?? ''}|${sort ?? ''}`;
+			});
+
+			await expect(get({ filter: 'name eq Claude' })).resolves.toBe('name eq Claude|');
+			await expect(get({ filter: 'a', sort: 'name' })).resolves.toBe('a|name');
+		});
+
+		test('inferred arguments still deduplicate by stable cache key', async () => {
+			let calls = 0;
+			const get = query((arg: { limit: number; offset: number }) => {
+				calls++;
+				return arg.limit;
+			});
+
+			const a = get({ limit: 10, offset: 0 });
+			const b = get({ offset: 0, limit: 10 });
+
+			await expect(a).resolves.toBe(10);
+			await expect(b).resolves.toBe(10);
+			expect(calls).toBe(1);
+		});
+
+		test('the value is passed through untouched (no schema, no coercion)', async () => {
+			const get = query((n: number) => typeof n);
+
+			// runtime lies are allowed — TypeScript is the only guard
+			await expect(get('42' as unknown as number)).resolves.toBe('string');
+		});
+
+		test('wrongly-typed arguments are rejected at compile time', () => {
+			const get = query((n: number) => n + 1);
+			// @ts-expect-error string is not assignable to number
+			void get('nope');
+		});
+
+		test('handlers with only default parameters are treated as argument-less (documented caveat)', async () => {
+			const get = query((n = 1) => n);
+
+			// fn.length === 0, so passing an argument still triggers the dev guard
+			await expect(get(5 as never)).rejects.toThrowError(/does not take an argument/);
+		});
+	});
+
 	describe.runIf(has_gc)('lifecycle', () => {
 		test('an unused query entry is evicted after its proxies are garbage collected', async () => {
 			const get = query(async () => 'x');
