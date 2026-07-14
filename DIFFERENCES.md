@@ -78,6 +78,39 @@ Locally there is no round-trip, so:
   prefix has no effect. The `n:`/`b:` name prefixes **are** kept — they drive
   number/boolean coercion from `FormData` strings, same as kit.
 
+## Validation is optional for `query` and `command` (TypeScript-inferred arguments)
+
+In kit, every remote function argument crosses a network trust boundary, so a
+declaration that takes an argument **must** provide a Standard Schema or explicitly opt
+out with `'unchecked'` — `query(fn)` is strictly argument-less. Locally there is no
+trust boundary: the handler and its caller live in the same bundle, so the handler's
+own TypeScript signature is authoritative.
+
+svelte-local-query therefore accepts a bare handler **with a parameter** for `query`,
+`query.batch`, `query.live` and `command`; the client-side callable gets the exact same
+signature, and the value passes through untouched at runtime (equivalent to
+`'unchecked'`):
+
+```ts
+const getPosts = query(({ filter, sort }: { filter?: string; sort?: string }) => {
+	return db.find(filter, sort);
+});
+
+getPosts({ filter: 'name eq Claude' }); // type-checked against the handler's parameter
+```
+
+- The **one-argument rule** is unchanged: exactly one argument, still used as the
+  stable-JSON cache key (same dedup rules as any other query).
+- Schema and `'unchecked'` declarations keep working exactly as in kit — use a schema
+  whenever the value comes from outside your code (user input, URL params, storage).
+- **`form` is excluded**: form data originates from the DOM as strings and needs
+  coercion + validation, so forms still require a schema or `'unchecked'`.
+- Runtime caveat: whether a bare handler accepts an argument is detected via its arity
+  (`fn.length`). Handlers with **only default or rest parameters**
+  (`(arg = {}) => ...`, `(...args) => ...`) have length 0 and are treated as
+  argument-less (passing an argument triggers the dev-time guard). Declare a plain
+  parameter or use `'unchecked'` in that case.
+
 ## Validation errors
 
 Kit responds with a generic **400 Bad Request** when a query/command argument fails its

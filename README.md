@@ -111,10 +111,16 @@ A condensed tour:
 ### `query`
 
 ```ts
-const getTodos = query(async () => [...]);                        // no argument
-const getTodo  = query(v.string(), async (id) => {...});          // validated argument
-const search   = query('unchecked', async (filters: F) => {...}); // typed, unvalidated
+const getTodos = query(async () => [...]);                             // no argument
+const search   = query((f: { filter?: string }) => {...});             // TS-inferred argument
+const getTodo  = query(v.string(), async (id) => {...});               // validated argument
+const legacy   = query('unchecked', async (filters: Filters) => {...}); // typed, unvalidated
 ```
+
+Since everything runs locally (no trust boundary), the argument type can be inferred
+straight from the handler's parameter — no schema, no `'unchecked'` (this is a
+[local-only extension](./DIFFERENCES.md#validation-is-optional-for-query-and-command-typescript-inferred-arguments)
+to the kit API). Use a schema whenever the value comes from outside your code.
 
 Calling `getTodo(id)` returns a `LocalQuery<T>`:
 
@@ -165,7 +171,9 @@ async-iterable itself (`for await (const users of onlineUsers())`).
 ### `command`
 
 ```ts
-const addTodo = command(v.string(), async (text) => {
+const addTodo = command((text: string) => db.todos.add({ text })); // TS-inferred argument
+const addSafe = command(v.string(), async (text) => {
+	// schema-validated
 	await db.todos.add({ text });
 });
 ```

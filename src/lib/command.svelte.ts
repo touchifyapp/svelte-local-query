@@ -124,6 +124,13 @@ type InferInput<Schema extends StandardSchemaV1> = StandardSchemaV1.InferInput<S
  * ```
  */
 export function command<Output>(fn: () => MaybePromise<Output>): LocalCommand<void, Output>;
+/**
+ * Define a command whose argument type is inferred from the handler's parameter —
+ * no runtime validation, TypeScript only (see DIFFERENCES.md).
+ */
+export function command<Input, Output>(
+	fn: (arg: Input) => MaybePromise<Output>
+): LocalCommand<Input, Output>;
 export function command<Input, Output>(
 	validate: 'unchecked',
 	fn: (arg: Input) => MaybePromise<Output>
