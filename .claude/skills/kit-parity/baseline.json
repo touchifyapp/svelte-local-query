@@ -1,0 +1,32 @@
+{
+	"kit_version": "2.69.3",
+	"checked_at": "2026-07-14",
+	"files": {
+		"packages/kit/src/runtime/client/remote-functions/index.js": "ce7f84a8ec047eedcea87724319d97c1ba4227b8597bbcdd53a3eedb4b01cab0",
+		"packages/kit/src/runtime/client/remote-functions/shared.svelte.js": "3592f502ac1792aa1828d2a044a98a6ffae7d8e746d48eadc1be213b7aaa3fa0",
+		"packages/kit/src/runtime/client/remote-functions/cache.svelte.js": "cbea68baf9a446e11db1b75d6a66c67a7200f35a1afdee6f54fab69da48ea850",
+		"packages/kit/src/runtime/client/remote-functions/command.svelte.js": "c28a2f9433ebe89b3748a35388d2bcee58f243c6d11d3e8828be09ff51abe6f5",
+		"packages/kit/src/runtime/client/remote-functions/form.svelte.js": "40ef548ea4da3e79a305ae25113506f1e019c4a7ef78d526c69dea23ee440401",
+		"packages/kit/src/runtime/client/remote-functions/query-batch.svelte.js": "73799c7da44d6c5e6cdde1251ac1c4a46af83b4258d22e50e30f1fd9b3f2a3f7",
+		"packages/kit/src/runtime/client/remote-functions/prerender.svelte.js": "3aea349775e772b255bb9621c072cc2479144e5fb2cbfcd3a51f56cdb8a0b880",
+		"packages/kit/src/runtime/client/remote-functions/query/index.js": "3631e5f61716c3c6f1c19016481fccf223e6dd50f268d701281b7db1f1c65b84",
+		"packages/kit/src/runtime/client/remote-functions/query/instance.svelte.js": "aaa1daa097663dd1c11a38d7056d241702651e0c800be384d5f8800c59643a05",
+		"packages/kit/src/runtime/client/remote-functions/query/proxy.js": "01f1a5fd30a4356acdb43d99c03f393ba425890a430dcad7111928c42a12e053",
+		"packages/kit/src/runtime/client/remote-functions/query/cache.js": "b550dd54a529fa9dfe3014b0ca763c2a8de4cc82f2dac05354e3582e3db20ffd",
+		"packages/kit/src/runtime/client/remote-functions/query/proxy.svelte.spec.js": "5c7cfb96a966a07f30af980aaf6cf48890df72065af9810457b92113db2e69c7",
+		"packages/kit/src/runtime/client/remote-functions/query-live/index.js": "fa25fec7b53b7e05457d8ad2a6d9b57b6e3e0cb92475e24bd960ff03bbb800d7",
+		"packages/kit/src/runtime/client/remote-functions/query-live/instance.svelte.js": "fc80362f8a14513d95b3d0fed099253ee5ec8a8b9ba5613ca8b6cac1bb99b2b7",
+		"packages/kit/src/runtime/client/remote-functions/query-live/proxy.js": "4e5e8ce21356d1073efb8e3450e91398156ae31b2c60418f9cce3b61134915ac",
+		"packages/kit/src/runtime/client/remote-functions/query-live/cache.js": "0dc6b11490a06c9c8d5f82bd65d7b90b1d358b327fbdeee14b05dd8f7384d207",
+		"packages/kit/src/runtime/client/remote-functions/query-live/iterator.js": "82db95d57fde0c3957bf183d142c4919a4bac08c4c0e51a130a5488ba6627f0f",
+		"packages/kit/src/runtime/client/remote-functions/query-live/proxy.svelte.spec.js": "ac3bdc06ab4bb712f367601e873e64079e85809ed342b02cf24984c7a7842c3e",
+		"packages/kit/src/runtime/client/remote-functions/cache.svelte.spec.js": "67a5e1ee8bfc17e0b880136b3c5c5797323eb4458c8ed6f0de71cea5183580e3",
+		"packages/kit/src/runtime/client/remote-functions/instance.unhandled.svelte.spec.js": "d46a25b0fbd50d184f5805aeef3ca56caabbdea0fc6e38ba15768180262cc0e5",
+		"packages/kit/src/runtime/client/remote-functions/shared.transport.spec.js": "732b4b2cd697d25fc694ebdc940a4f94d4ddbb04706136aca5be25a1b921209f",
+		"packages/kit/src/runtime/form-utils.js": "98cd48645c4aa9c922e91258a8833f3e359d843eed4f179a857778359af3af01",
+		"packages/kit/src/runtime/shared.js": "f58d129f21b3414aee76545953e44c771878cf2ad75c2434f8df44d417f507da",
+		"packages/kit/src/utils/shared-iterator.js": "91031662df39dffc716bd9f464fdba24a448ac497624a2faedfb168b62ced74b",
+		"packages/kit/types/index.d.ts": "913c6d520a979bf3d4c4c6c324db5d385236f29d19ff171afaed3d53f8493655",
+		"documentation/docs/20-core-concepts/60-remote-functions.md": "ee1dd2b19712b6aa6ceac9cfbd4d6bd624658b2e1c94b62197bf812d6b7a9b2b"
+	}
+}

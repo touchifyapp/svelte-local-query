@@ -21,6 +21,11 @@ without SvelteKit.
 it or document the divergence in `DIFFERENCES.md`. Public types in `src/lib/types.ts`
 are ports of kit's `Remote*` types renamed to `Local*` — keep them in sync structurally.
 
+To check for and sync upstream changes, use the `kit-parity` skill
+(`.claude/skills/kit-parity/`): it diffs tracked kit files against the recorded
+baseline, classifies changes against DIFFERENCES.md, and walks through porting code and
+tests.
+
 ## Architecture (3-layer split, ported from kit)
 
 1. **Factory** (`query()`, `command()`, `form()` in `src/lib/query/index.ts`,
