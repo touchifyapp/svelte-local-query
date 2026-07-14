@@ -15,12 +15,8 @@ export default defineConfig({
 		environment: 'jsdom',
 		include: ['src/**/*.{test,spec}.{js,ts}'],
 		setupFiles: ['./src/tests/setup.ts'],
-		poolOptions: {
-			forks: {
-				// allow tests to trigger garbage collection to exercise the
-				// FinalizationRegistry-based cache eviction
-				execArgv: ['--expose-gc']
-			}
-		}
+		// allow tests to trigger garbage collection to exercise the
+		// FinalizationRegistry-based cache eviction
+		execArgv: ['--expose-gc']
 	}
 });
