@@ -8,10 +8,12 @@ without SvelteKit.
 ## Commands
 
 - `npm test` — run the vitest suite (jsdom, `--expose-gc` for FinalizationRegistry tests)
+- `npm run test:e2e` — Playwright suite (`e2e/`) driving the playground in Chromium; in
+  sandboxed sessions run with `PLAYWRIGHT_CHROMIUM_PATH=/opt/pw-browsers/chromium`
 - `npm run check` — svelte-check with strict TypeScript
 - `npm run build` — `svelte-package` into `dist/` + `publint`
 - `npm run lint` / `npm run format` — prettier check / write
-- `npm run dev` — vite playground (`playground/`), a manual end-to-end page
+- `npm run dev` — vite playground (`playground/`), the page the e2e suite drives
 
 ## The kit-parity rule
 

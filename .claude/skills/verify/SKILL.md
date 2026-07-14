@@ -9,20 +9,21 @@ Run these in order; all must pass before committing:
 
 1. `npm run check` — svelte-check, strict TS, zero errors expected.
 2. `npm test` — full vitest suite. GC/lifecycle tests need `--expose-gc`, which
-   `vite.config.ts` already sets via `poolOptions.forks.execArgv`. If lifecycle tests
-   are skipped, check that the pool is `forks` (the default) and not overridden.
+   `vite.config.ts` already sets via `test.execArgv`. If lifecycle tests are skipped,
+   check that this flag still reaches the worker processes.
 3. `npm run build` — `svelte-package` must emit `dist/` with `.d.ts` files and `publint`
    must report "All good!".
+4. `npm run test:e2e` — the Playwright suite in `e2e/` drives the vite playground
+   (query dedup + refresh, command with optimistic `.updates()`, form
+   fields/issues/validation with refresh-all, live query) in a real Chromium. It starts
+   the dev server itself. In sandboxed remote sessions, don't download browsers — use
+   the preinstalled one: `PLAYWRIGHT_CHROMIUM_PATH=/opt/pw-browsers/chromium npm run test:e2e`.
 
 ## Behavioral changes
 
-For changes to query/command/form runtime behavior, also verify in a real browser:
-
-- `npm run dev` starts the vite playground (`playground/`), which exercises a query
-  (dedup + refresh), a command with `.updates()` + optimistic override, a form with
-  fields/issues/validation, and a live query.
-- Drive it with Playwright (Chromium is preinstalled at `/opt/pw-browsers/chromium` in
-  remote sessions; use `executablePath` instead of downloading browsers).
+For changes to query/command/form runtime behavior not covered by `e2e/playground.spec.ts`,
+extend the playground page (`playground/App.svelte` + `playground/data.ts`) and the e2e
+suite rather than verifying by hand — CI runs the suite on every push.
 
 ## Parity check
 
