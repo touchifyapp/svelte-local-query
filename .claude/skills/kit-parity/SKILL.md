@@ -140,8 +140,10 @@ commit. Update README examples if the public API surface changed.
 
 1. `npm run check` — 0 errors; `npm test` — all green; `npm run build` — publint clean;
    `npm run lint` — formatted.
-2. If runtime behavior changed, run the playground end-to-end (see the `verify` skill):
-   `npm run dev` + Playwright against Chromium.
+2. If runtime behavior changed, run the e2e suite:
+   `PLAYWRIGHT_CHROMIUM_PATH=/opt/pw-browsers/chromium npm run test:e2e` (see the
+   `verify` skill) — and extend `e2e/playground.spec.ts` + the playground page when the
+   ported change isn't covered yet.
 3. Update the baseline so the next run starts from this sync:
    `.claude/skills/kit-parity/fetch-upstream.sh baseline` (commit `baseline.json`).
 4. Commit and open a PR that lists, per upstream change: what changed in kit, how it

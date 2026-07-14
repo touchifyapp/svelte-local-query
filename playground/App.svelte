@@ -33,6 +33,7 @@
 			{/each}
 		</ul>
 		<p data-testid="dedup">shared: {todos.current === todos_again.current}</p>
+		<p data-testid="like-pending">like pending: {addLike.pending}</p>
 		<button data-testid="refresh" onclick={() => todos.refresh()}>refresh</button>
 	{/if}
 </section>

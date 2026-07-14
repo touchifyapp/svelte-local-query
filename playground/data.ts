@@ -12,7 +12,7 @@ let todos: Todo[] = [
 	{ id: '2', text: 'write playground', likes: 0 }
 ];
 
-const delay = () => new Promise((resolve) => setTimeout(resolve, 100));
+const delay = (ms = 100) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export let query_runs = 0;
 
@@ -28,7 +28,9 @@ export const getLikes = query(async (id: string) => {
 });
 
 export const addLike = command(async (id: string) => {
-	await delay();
+	// slow on purpose: gives the e2e suite a wide window to observe the optimistic
+	// override while the command is still pending
+	await delay(400);
 	todos = todos.map((todo) => (todo.id === id ? { ...todo, likes: todo.likes + 1 } : todo));
 });
 

@@ -259,9 +259,10 @@ pluggable redirects, …). The complete annotated list lives in
 
 ```sh
 npm test          # vitest suite (jsdom; --expose-gc for cache-eviction tests)
+npm run test:e2e  # Playwright suite driving the playground in Chromium
 npm run check     # svelte-check, strict TS
 npm run build     # svelte-package + publint
-npm run dev       # vite playground with a manual end-to-end page
+npm run dev       # vite playground (the page the e2e suite drives)
 ```
 
 ## Acknowledgements

@@ -1,7 +1,7 @@
 {
 	"name": "svelte-local-query",
 	"version": "0.1.0",
-	"description": "SvelteKit remote functions API (query, command, form) for local, client-only use — no backend required.",
+	"description": "SvelteKit remote functions API (query, command, form) for local, client-only use \u2014 no backend required.",
 	"license": "MIT",
 	"repository": {
 		"type": "git",
@@ -39,6 +39,7 @@
 		"check": "svelte-check --tsconfig ./tsconfig.json",
 		"test": "vitest run",
 		"test:watch": "vitest",
+		"test:e2e": "playwright test",
 		"format": "prettier --write .",
 		"lint": "prettier --check ."
 	},
@@ -50,6 +51,7 @@
 		"esm-env": "^1.2.2"
 	},
 	"devDependencies": {
+		"@playwright/test": "^1.61.1",
 		"@sveltejs/package": "^2.5.8",
 		"@sveltejs/vite-plugin-svelte": "^7.2.0",
 		"@types/node": "^26.1.1",
