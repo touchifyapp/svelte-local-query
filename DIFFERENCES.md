@@ -75,9 +75,9 @@ Locally there is no round-trip, so:
 - **Handler-driven refreshes** (`getPosts().refresh()`, `getPost(id).set(result)` inside
   a `command`/`form` handler) work directly against the live cache instead of being
   encoded into the response.
-  They also run **immediately**: since kit 3, a server-side `refresh()` inside a command
-  is deferred until the handler body completes, so it observes every mutation the
-  handler makes. Doing the same locally would need an async context to tell handler
+  They also run **immediately**: since kit 3, a server-side `refresh()` inside a
+  `command`/`form` handler only records the query, which is then run at the end of the
+  request, so it observes every mutation the handler makes (even ones after the call). Doing the same locally would need an async context to tell handler
   calls apart from concurrent UI calls, which browsers don't provide. Call `refresh()`
   after your mutations (or use `.updates(...)`, which is always applied after the
   handler resolves).
