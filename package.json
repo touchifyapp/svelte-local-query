@@ -7,6 +7,10 @@
 		"type": "git",
 		"url": "git+https://github.com/touchifyapp/svelte-local-query.git"
 	},
+	"homepage": "https://github.com/touchifyapp/svelte-local-query#readme",
+	"bugs": {
+		"url": "https://github.com/touchifyapp/svelte-local-query/issues"
+	},
 	"keywords": [
 		"svelte",
 		"sveltekit",
@@ -29,6 +33,7 @@
 	},
 	"files": [
 		"dist",
+		"DIFFERENCES.md",
 		"!dist/**/*.test.*",
 		"!dist/**/*.spec.*"
 	],
