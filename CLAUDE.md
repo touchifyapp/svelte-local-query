@@ -15,6 +15,13 @@ without SvelteKit.
 - `npm run lint` / `npm run format` — prettier check / write
 - `npm run dev` — vite playground (`playground/`), the page the e2e suite drives
 
+## Releasing
+
+Publishing goes through `.github/workflows/publish.yml` (trusted publishing / OIDC,
+triggered by a published GitHub Release, gated on CI and on approval of the `npm`
+environment). Never publish from a local machine and never add an npm token — see
+`RELEASING.md`.
+
 ## The kit-parity rule
 
 **Behavior must match SvelteKit remote functions unless the difference is listed in
