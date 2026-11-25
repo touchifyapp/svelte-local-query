@@ -2,7 +2,8 @@ import { describe, expect, test } from 'vitest';
 import { tick } from 'svelte';
 import * as v from 'valibot';
 import { query } from './index.js';
-import { query_map } from '../internal/shared.svelte.js';
+import { Query } from './instance.svelte.js';
+import { query_map, refreshAll } from '../internal/shared.svelte.js';
 import { isValidationError } from '../validation.js';
 import { flush, has_gc, track_unhandled, wait_for } from '../../tests/helpers.js';
 import { with_resolvers, type PromiseWithResolvers } from '../internal/utils.js';
@@ -372,5 +373,104 @@ describe('query', () => {
 
 			expect(query_map.has(id)).toBe(false);
 		});
+	});
+});
+
+// ported from kit's `instance.unhandled.svelte.spec.js` (3.x), adapted to raw errors
+// (kit normalizes them to `App.Error` / `HandledHttpError` — see DIFFERENCES.md)
+describe('Query errors', () => {
+	test('a failed newer run rejects superseded awaiters before the first value', async () => {
+		const first = with_resolvers<string>();
+		const second = with_resolvers<string>();
+		let runs = 0;
+		const q = new Query('overlap', () => (runs++ === 0 ? first.promise : second.promise));
+
+		const first_result = Promise.resolve(q);
+		await tick();
+		const second_result = q.refresh();
+		const error = new Error('nope');
+		second.reject(error);
+
+		const [first_error, second_error] = await Promise.all([
+			first_result.catch((e: unknown) => e),
+			second_result.catch((e: unknown) => e)
+		]);
+		expect(first_error).toBe(error);
+		expect(second_error).toBe(error);
+		expect(q.ready).toBe(false);
+		expect(q.current).toBeUndefined();
+	});
+
+	test('fail rejects existing awaiters before the first value', async () => {
+		const pending = with_resolvers<string>();
+		const q = new Query('fail', () => pending.promise);
+		const result = Promise.resolve(q);
+		await tick();
+
+		const error = new Error('unavailable');
+		q.fail(error);
+
+		await expect(result).rejects.toBe(error);
+	});
+});
+
+describe('Query.set', () => {
+	function count_invalidations(q: Query<any>) {
+		let runs = 0;
+		const destroy = $effect.root(() => {
+			$effect.pre(() => {
+				runs++;
+				void q.then;
+			});
+		});
+		return { runs: () => runs, destroy };
+	}
+
+	test('settles a pending request in place instead of replacing its promise', async () => {
+		const pending = with_resolvers<string>();
+		const q = new Query('set-pending', () => pending.promise);
+		const awaiter = count_invalidations(q);
+		await tick();
+		expect(awaiter.runs()).toBe(1);
+
+		q.set('b');
+		expect(await Promise.resolve(q)).toBe('b');
+		await tick();
+		expect(awaiter.runs()).toBe(1);
+		awaiter.destroy();
+	});
+
+	test('invalidates awaiters of a settled request', async () => {
+		const q = new Query('set-settled', () => Promise.resolve('a'));
+		const awaiter = count_invalidations(q);
+		expect(await Promise.resolve(q)).toBe('a');
+		expect(awaiter.runs()).toBe(1);
+
+		q.set('b');
+		await tick();
+		expect(awaiter.runs()).toBe(2);
+		expect(await Promise.resolve(q)).toBe('b');
+		awaiter.destroy();
+	});
+});
+
+describe('refreshAll', () => {
+	test('refreshes every active query and resolves once they have settled', async () => {
+		let a = 0;
+		let b = 0;
+		const qa = query(async () => a)();
+		const qb = query(async () => {
+			if (b > 0) throw new Error('b failed');
+			return b;
+		})();
+		await Promise.all([qa, qb]);
+
+		a++;
+		b++;
+		await refreshAll();
+
+		expect(qa.current).toBe(1);
+		// individual failures surface on the query, refreshAll itself resolves
+		expect((qb.error as Error).message).toBe('b failed');
 	});
 });

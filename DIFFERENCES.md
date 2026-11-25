@@ -38,6 +38,27 @@ Kit serializes query arguments with devalue (supporting `Date`, `Map`, `Set`, `B
 - arguments must be JSON-serializable. `Date` works (via `toJSON`, i.e. keyed by its ISO
   string), but `Map`/`Set` arguments throw and `BigInt` is not supported.
 
+## Errors are not normalized
+
+Since kit 3, every query/live-query failure is passed through the `handleError` hook:
+`query.error` (and `liveQuery.error`) holds the resulting `App.Error` body
+(`{ message, status? }`), and awaiting a failed query rejects with a `HandledHttpError`
+whose `.body` is that object. This exists because errors cross the network (and a trust
+boundary) as serialized payloads.
+
+Locally nothing is serialized and handler and caller live in the same bundle, so
+svelte-local-query surfaces the **raw thrown value**:
+
+- `query.error` / `liveQuery.error` is exactly what the handler threw (an `Error`, a
+  `ValidationError`, a `Redirect`, …), typed as `any`;
+- awaiting a failed query rejects with that same value;
+- there is no `handleError` hook for queries — wrap or map errors in your handler if
+  you need a uniform shape.
+
+The surrounding kit 3 behavior is otherwise ported: an awaiting consumer whose request
+was superseded or cleared before any value arrived rejects with the current error
+instead of resolving to `undefined`.
+
 ## Single-flight mutations & refreshes
 
 Kit's single-flight machinery exists to avoid a second server round-trip: refreshed
@@ -48,9 +69,18 @@ Locally there is no round-trip, so:
 
 - **No accept-list.** `.updates(...)` on a command/form submission simply re-runs the
   targeted queries after the handler resolves — no `requested()` needed, no `limit`.
+  Consequently kit 3's rule that every requested update must be refreshed, set,
+  reconnected or explicitly `ignore()`d (otherwise the query enters an error state on
+  the client) has no local equivalent: requested updates are always applied.
 - **Handler-driven refreshes** (`getPosts().refresh()`, `getPost(id).set(result)` inside
   a `command`/`form` handler) work directly against the live cache instead of being
   encoded into the response.
+  They also run **immediately**: since kit 3, a server-side `refresh()` inside a
+  `command`/`form` handler only records the query, which is then run at the end of the
+  request, so it observes every mutation the handler makes (even ones after the call). Doing the same locally would need an async context to tell handler
+  calls apart from concurrent UI calls, which browsers don't provide. Call `refresh()`
+  after your mutations (or use `.updates(...)`, which is always applied after the
+  handler resolves).
 - Awaiting `command(...).updates(...)` still resolves only after the refreshed queries
   have re-run, and optimistic `withOverride` values are released at the same point —
   matching kit's timing semantics.
@@ -60,11 +90,14 @@ Locally there is no round-trip, so:
 - **No non-JS fallback.** Kit forms work without JavaScript via a native POST;
   locally there is no server to post to, so JavaScript is required. `method="POST"` and
   `action="?/local=<id>"` are kept purely for API parity (and for the submit handler to
-  recognize its own form).
-- **Auto-invalidation** on success: kit calls `invalidateAll()` (queries **and** load
-  functions). svelte-local-query refreshes **all active cached queries** (and reconnects
-  live queries). As in kit, this is skipped when you take control via `.updates(...)` or
-  refresh/set queries inside the handler.
+  recognize its own form). Kit 3's `action` additionally carries the current page's
+  search parameters (`?<search>&/remote=<id>`) so that non-JS submissions preserve them;
+  locally the action is a fixed string.
+- **Auto-refresh** on success: kit calls `refreshAll()` (queries **and** load
+  functions) and awaits it before the submission resolves. svelte-local-query refreshes
+  **all active cached queries** (and reconnects live queries), also awaited. The same
+  function is exported as `refreshAll()`. As in kit, this is skipped when you take
+  control via `.updates(...)` or refresh/set queries inside the handler.
 - **Errors** thrown by a submission handler render the nearest `+error.svelte` in kit.
   Locally they are passed to the `init({ onerror })` hook, or rethrown (surfacing as an
   unhandled rejection) if none is configured.
@@ -114,8 +147,9 @@ getPosts({ filter: 'name eq Claude' }); // type-checked against the handler's pa
 ## Validation errors
 
 Kit responds with a generic **400 Bad Request** when a query/command argument fails its
-schema (customizable via the `handleValidationError` server hook). Locally the
-`ValidationError` (carrying the Standard Schema issues) is surfaced directly:
+schema (since kit 3 the failure goes through the server `handleError` hook with
+`kind: 'validation'`). Locally the `ValidationError` (carrying the Standard Schema
+issues) is surfaced directly (see also [Errors are not normalized](#errors-are-not-normalized)):
 
 - for a `query`: as `query.error` / the awaited rejection;
 - for a `command`: as the rejection of the returned promise.

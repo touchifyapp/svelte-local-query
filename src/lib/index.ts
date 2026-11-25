@@ -1,12 +1,13 @@
 export { query, type QueryFunction } from './query/index.js';
 export { command } from './command.svelte.js';
 export { form } from './form/index.svelte.js';
+export { refreshAll } from './internal/shared.svelte.js';
 
 export { init, redirect, isRedirect, Redirect, type LocalQueryConfig } from './config.js';
 export { invalid, isValidationError, ValidationError } from './validation.js';
 
 export type {
-	InvalidField,
+	LocalFormInvalidField,
 	LiveQueryHandlerResult,
 	LocalCommand,
 	LocalForm,

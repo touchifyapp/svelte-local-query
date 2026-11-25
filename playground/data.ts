@@ -1,3 +1,4 @@
+import * as v from 'valibot';
 import { command, form, invalid, query } from '../src/lib/index.js';
 
 // a tiny in-memory "database"
@@ -42,6 +43,16 @@ export const addTodo = form('unchecked', async (data: { text: string }, issue) =
 	todos = [...todos, { id: String(todos.length + 1), text: data.text, likes: 0 }];
 	return { added: data.text };
 });
+
+// schema-validated form, used to exercise as-you-type validation: issues only show up
+// for fields that have been edited and then blurred
+export const subscribe = form(
+	v.object({ email: v.pipe(v.string(), v.email('Please enter a valid email')) }),
+	async ({ email }) => {
+		await delay();
+		return { subscribed: email };
+	}
+);
 
 export const clock = query.live(async function* () {
 	let i = 0;

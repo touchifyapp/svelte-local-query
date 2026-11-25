@@ -38,7 +38,15 @@ export class Query<T> {
 		void this.#overrides.length;
 
 		return ((resolve, reject) => {
-			const result = p.then(tick).then(() => this.#current as T);
+			const result = p.then(tick).then(() => {
+				// a superseded or cleared request settles without a value; awaiting consumers
+				// must not observe `undefined` as if it were a successful result
+				if (!this.#ready) {
+					throw this.#error ?? new Error('Query resolved without a value');
+				}
+
+				return this.#current as T;
+			});
 
 			if (resolve || reject) {
 				return result.then(resolve, reject);
@@ -95,21 +103,22 @@ export class Query<T> {
 				// Untrack this to not trigger mutation validation errors which can occur
 				// if you do e.g. $derived({ a: await queryA(), b: await queryB() })
 				untrack(() => {
-					this.#latest.splice(0, idx).forEach((r) => r(undefined));
+					this.#latest.splice(0, idx + 1).forEach((r) => r(undefined));
 					this.#ready = true;
 					this.#loading = false;
 					this.#raw = value;
 					this.#error = undefined;
 				});
-
-				resolve(undefined);
 			})
 			.catch((e) => {
+				// kit normalizes the error through `handleError` here (an async gap, hence its
+				// re-check of `#latest`); locally the raw error is surfaced — see DIFFERENCES.md
 				const idx = this.#latest.indexOf(resolve);
 				if (idx === -1) return;
 
 				untrack(() => {
 					this.#latest.splice(0, idx).forEach((r) => r(undefined));
+					this.#latest.shift();
 					this.#error = e;
 					this.#loading = false;
 				});
@@ -185,12 +194,20 @@ export class Query<T> {
 
 	set(value: T): void {
 		bump_epoch();
+
+		// a pending request's promise is settled with the value below; replacing it
+		// too would make awaiting consumers settle a second time in a new batch
+		const in_flight = this.#latest.length > 0;
+
 		this.#clear_pending();
 		this.#ready = true;
 		this.#loading = false;
 		this.#error = undefined;
 		this.#raw = value;
-		this.#promise = Promise.resolve();
+
+		if (!in_flight) {
+			this.#promise = Promise.resolve();
+		}
 	}
 
 	fail(error: unknown): void {
