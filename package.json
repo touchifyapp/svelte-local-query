@@ -1,7 +1,7 @@
 {
 	"name": "svelte-local-query",
-	"version": "0.1.0",
-	"description": "SvelteKit remote functions API (query, command, form) for local, client-only use \u2014 no backend required.",
+	"version": "0.1.1",
+	"description": "SvelteKit remote functions API (query, command, form) for local, client-only use — no backend required.",
 	"license": "MIT",
 	"repository": {
 		"type": "git",
