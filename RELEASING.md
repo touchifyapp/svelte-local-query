@@ -30,10 +30,10 @@ If the workflow fails before publishing, fix the issue, then move the tag and re
 A version number can only be published once: if the publish step itself went through,
 bump again.
 
-## One-time setup (already done once — kept for reference)
+## One-time setup
 
 Trusted publishing can only be configured for a package that already exists on npm,
-so the very first version was published by hand.
+so the very first version has to be published by hand.
 
 1. **First publish, from a maintainer's machine** (on `main`, clean tree):
 
