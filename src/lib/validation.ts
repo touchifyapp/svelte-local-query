@@ -1,6 +1,6 @@
 import { DEV } from 'esm-env';
 import type { StandardSchemaV1 } from '@standard-schema/spec';
-import type { InvalidField } from './types.js';
+import type { LocalFormInvalidField } from './types.js';
 
 const VALIDATION_ERROR = Symbol('local-query.validation_error');
 
@@ -52,7 +52,7 @@ export function invalid(...issues: Array<string | StandardSchemaV1.Issue>): neve
  * Property/index access builds up a path; calling the proxy produces a
  * Standard Schema issue for that path.
  */
-export function create_issue_proxy(path: Array<string | number> = []): InvalidField<any> {
+export function create_issue_proxy(path: Array<string | number> = []): LocalFormInvalidField<any> {
 	const fn = (message: string): StandardSchemaV1.Issue => ({ message, path: [...path] });
 
 	return new Proxy(fn, {
@@ -61,7 +61,7 @@ export function create_issue_proxy(path: Array<string | number> = []): InvalidFi
 			if (/^\d+$/.test(prop)) return create_issue_proxy([...path, parseInt(prop, 10)]);
 			return create_issue_proxy([...path, prop]);
 		}
-	}) as InvalidField<any>;
+	}) as LocalFormInvalidField<any>;
 }
 
 export type Validator = StandardSchemaV1 | 'unchecked' | undefined;

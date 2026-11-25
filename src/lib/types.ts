@@ -10,6 +10,14 @@ export type MaybePromise<T> = T | Promise<T>;
 
 type MaybeArray<T> = T | T[];
 
+type ImageInputValue = { x: number; y: number };
+
+type IsImageInputValue<T> = T extends ImageInputValue
+	? Exclude<keyof T, keyof ImageInputValue> extends never
+		? true
+		: false
+	: false;
+
 type IsAny<T> = 0 extends 1 & T ? true : false;
 
 // If T is unknown or has an index signature, the types below will recurse indefinitely
@@ -31,8 +39,9 @@ type ValueOfUnionKey<T, K extends PropertyKey> = T extends unknown
 	: never;
 
 /**
- * Compile-time guard: all booleans in form schemas must be optional, because checkbox
- * inputs do not send a value when unchecked.
+ * Compile-time guard: boolean fields in form schemas that accept `false` must be
+ * optional, because checkbox inputs do not send a value when unchecked. A required
+ * `true` property is allowed, because leaving its checkbox unchecked should fail.
  */
 export type HasNonOptionalBoolean<T> =
 	IsAny<T> extends true
@@ -42,7 +51,7 @@ export type HasNonOptionalBoolean<T> =
 			: T extends Array<infer U>
 				? HasNonOptionalBoolean<U>
 				: T extends Record<string, any>
-					? { [K in keyof T]: HasNonOptionalBoolean<T[K]> }[keyof T]
+					? { [K in keyof T]: [T[K]] extends [true] ? never : HasNonOptionalBoolean<T[K]> }[keyof T]
 					: never;
 
 // Input type mappings for form fields
@@ -68,7 +77,7 @@ type InputTypeMap = {
 	submit: string | number | boolean;
 	button: string;
 	reset: string;
-	image: string;
+	image: ImageInputValue;
 	select: string;
 	'select multiple': string[];
 	'file multiple': File[];
@@ -80,7 +89,7 @@ export type LocalFormFieldType<T> = {
 }[keyof InputTypeMap];
 
 // Input element properties based on type
-type InputElementProps<T extends keyof InputTypeMap> = T extends 'checkbox' | 'radio'
+type InputElementProps<T extends keyof InputTypeMap, Value> = T extends 'checkbox' | 'radio'
 	? {
 			name: string;
 			type: T;
@@ -90,72 +99,87 @@ type InputElementProps<T extends keyof InputTypeMap> = T extends 'checkbox' | 'r
 			set checked(value: boolean);
 			readonly defaultChecked?: boolean;
 		}
-	: T extends 'file'
+	: T extends 'image'
 		? {
 				name: string;
-				type: 'file';
+				type: 'image';
 				'aria-invalid': boolean | 'false' | 'true' | undefined;
-				get files(): FileList | null;
-				set files(v: FileList | null);
 			}
-		: T extends 'select'
+		: T extends 'file'
 			? {
 					name: string;
+					type: 'file';
 					'aria-invalid': boolean | 'false' | 'true' | undefined;
-					get value(): string;
-					set value(v: string);
+					get files(): FileList | null;
+					set files(v: FileList | null);
 				}
-			: T extends 'select multiple'
+			: T extends 'select'
 				? {
 						name: string;
-						multiple: true;
 						'aria-invalid': boolean | 'false' | 'true' | undefined;
-						get value(): string[];
-						set value(v: string[]);
+						get value(): string;
+						set value(v: string);
 					}
-				: T extends 'text'
+				: T extends 'select multiple'
 					? {
 							name: string;
+							multiple: true;
 							'aria-invalid': boolean | 'false' | 'true' | undefined;
-							get value(): string | number;
-							set value(v: string | number);
-							readonly defaultValue?: string | number;
+							get value(): string[];
+							set value(v: string[]);
 						}
-					: {
-							name: string;
-							type: T;
-							'aria-invalid': boolean | 'false' | 'true' | undefined;
-							get value(): string | number;
-							set value(v: string | number);
-							readonly defaultValue?: string | number;
-						};
+					: T extends 'text'
+						? {
+								name: string;
+								'aria-invalid': boolean | 'false' | 'true' | undefined;
+								get value(): Value extends string ? string : string | number;
+								set value(v: Value extends string ? string : string | number);
+								readonly defaultValue?: Value extends string ? string : string | number;
+							}
+						: {
+								name: string;
+								type: T;
+								'aria-invalid': boolean | 'false' | 'true' | undefined;
+								get value(): string | number;
+								set value(v: string | number);
+								readonly defaultValue?: string | number;
+							};
 
 type LocalFormFieldMethods<T> = {
 	/** The values that will be submitted */
 	value(): DeepPartial<T>;
 	/** Set the values that will be submitted */
 	set(input: DeepPartial<T>): DeepPartial<T>;
+	/** Whether the field or any nested field has been interacted with since the form was mounted */
+	touched(): boolean;
+	/** Whether the field or any nested field has been edited since the form was mounted */
+	dirty(): boolean;
 	/** Validation issues, if any */
 	issues(): LocalFormIssue[] | undefined;
 };
 
-export type LocalFormFieldValue = string | string[] | number | boolean | File | File[];
+export type LocalFormFieldValue =
+	string | string[] | number | boolean | File | File[] | ImageInputValue;
 
 type AsArgs<Type extends keyof InputTypeMap, Value> = Type extends 'checkbox'
 	? Value extends string[]
-		? [type: Type, value: Value[number] | (string & {})]
+		? [type: Type, value: Value[number] | (string & {}), checked?: boolean]
 		: Value extends boolean
-			? [type: Type] | [type: Type, value: boolean]
-			: [type: Type] | [type: Type, value: Value | (string & {})]
-	: Type extends 'submit' | 'hidden'
-		? Value extends string
-			? [type: Type, value: Value | (string & {})]
-			: [type: Type, value: Value]
-		: Type extends 'radio'
-			? [type: Type, value: Value | (string & {})]
-			: Type extends 'file' | 'file multiple'
-				? [type: Type]
-				: [type: Type] | [type: Type, value: Value | (string & {})];
+			? [type: Type, value?: boolean]
+			: [type: Type, value?: Value]
+	: Type extends 'image'
+		? [type: Type]
+		: Type extends 'submit' | 'hidden'
+			? Value extends string
+				? [type: Type, value: Value | (string & {})]
+				: [type: Type, value: Value]
+			: Type extends 'radio'
+				? [type: Type, value: Value | (string & {}), checked?: boolean]
+				: Type extends 'file' | 'file multiple'
+					? [type: Type]
+					: [type: Type, value?: Value];
+
+type WidenLiteralString<T> = T extends string ? (string extends T ? T : string) : T;
 
 /**
  * Form field accessor type that provides `value()`, `set()`, `issues()` and `as()` methods
@@ -172,7 +196,9 @@ export type LocalFormField<Value extends LocalFormFieldValue> = LocalFormFieldMe
 	 * <input {...myForm.fields.myBoolean.as('checkbox')} />
 	 * ```
 	 */
-	as<T extends LocalFormFieldType<Value>>(...args: AsArgs<T, Value>): InputElementProps<T>;
+	as<T extends LocalFormFieldType<Value>>(
+		...args: AsArgs<T, Value>
+	): InputElementProps<T, WidenLiteralString<Value>>;
 };
 
 type LocalFormFieldContainer<Value> = LocalFormFieldMethods<Value> & {
@@ -183,12 +209,15 @@ type LocalFormFieldContainer<Value> = LocalFormFieldMethods<Value> & {
 type UnknownField<Value> = LocalFormFieldMethods<Value> & {
 	/** Validation issues belonging to this or any of the fields that belong to it, if any */
 	allIssues(): LocalFormIssue[] | undefined;
-	as<T extends LocalFormFieldType<Value>>(...args: AsArgs<T, Value>): InputElementProps<T>;
+	as<T extends LocalFormFieldType<Value>>(...args: AsArgs<T, Value>): InputElementProps<T, Value>;
 } & {
 	[key: string | number]: UnknownField<any>;
 };
 
-type LocalFormFieldsRoot<Input extends LocalFormInput | void> =
+type LocalFormFieldsRoot<
+	Input extends LocalFormInput | void,
+	Original extends [LocalFormInput | void] = [Input]
+> =
 	IsAny<Input> extends true
 		? RecursiveFormFields
 		: Input extends void
@@ -198,7 +227,11 @@ type LocalFormFieldsRoot<Input extends LocalFormInput | void> =
 					/** Validation issues belonging to this or any of the fields that belong to it, if any */
 					allIssues(): LocalFormIssue[] | undefined;
 				}
-			: LocalFormFields<Input>;
+			: WillRecurseIndefinitely<Input> extends true
+				? RecursiveFormFields
+				: LocalFormFieldContainer<Original[0]> & {
+						[K in KeysOfUnion<Original[0]>]-?: LocalFormFields<ValueOfUnionKey<Original[0], K>>;
+					};
 
 /**
  * Recursive type to build form fields structure with proxy access
@@ -208,17 +241,25 @@ export type LocalFormFields<T> =
 		? RecursiveFormFields
 		: NonNullable<T> extends string | number | boolean | File
 			? LocalFormField<NonNullable<T>>
-			: [NonNullable<T>] extends [string[] | File[]]
-				? LocalFormField<NonNullable<T>> & {
-						[K in number]: LocalFormField<NonNullable<T>[number]>;
-					}
-				: [NonNullable<T>] extends [Array<infer U>]
-					? LocalFormFieldContainer<NonNullable<T>> & {
-							[K in number]: LocalFormFields<U>;
-						}
-					: LocalFormFieldContainer<T> & {
+			: IsImageInputValue<NonNullable<T>> extends true
+				? LocalFormField<NonNullable<T> & ImageInputValue> &
+						Pick<LocalFormFieldContainer<T>, 'allIssues'> & {
 							[K in KeysOfUnion<T>]-?: LocalFormFields<ValueOfUnionKey<T, K>>;
-						};
+						}
+				: // [NonNullable<T>] is used to prevent distributing over union while still allowing
+					// nullable wrappers (e.g. `string[] | undefined` from a schema with `.default([])`)
+					// to be treated as arrays; only the last condition should distribute over unions
+					[NonNullable<T>] extends [string[] | File[]]
+					? LocalFormField<NonNullable<T>> & {
+							[K in number]: LocalFormField<NonNullable<T>[number]>;
+						}
+					: [NonNullable<T>] extends [Array<infer U>]
+						? LocalFormFieldContainer<NonNullable<T>> & {
+								[K in number]: LocalFormFields<U>;
+							}
+						: LocalFormFieldContainer<T> & {
+								[K in KeysOfUnion<T>]-?: LocalFormFields<ValueOfUnionKey<T, K>>;
+							};
 
 // By breaking this out into its own type, we avoid the TS recursion depth limit
 type RecursiveFormFields = LocalFormFieldContainer<any> & {
@@ -226,7 +267,9 @@ type RecursiveFormFields = LocalFormFieldContainer<any> & {
 };
 
 export interface LocalFormInput {
-	[key: string]: MaybeArray<string | number | boolean | File | LocalFormInput> | undefined;
+	// arrays can contain `undefined` where an indexed control submitted nothing,
+	// such as an unchecked checkbox or an unselected radio button
+	[key: string]: MaybeArray<string | number | boolean | File | LocalFormInput | undefined>;
 }
 
 export interface LocalFormIssue {
@@ -247,18 +290,18 @@ type ExtractId<Input> = Input extends { id: infer Id }
  * handlers. Access properties to create field-specific issues: `issue.fieldName('message')`.
  * Call `invalid(issue.foo(...), issue.nested.bar(...))` to throw a validation error.
  */
-export type InvalidField<T> =
+export type LocalFormInvalidField<T> =
 	WillRecurseIndefinitely<T> extends true
 		? Record<string | number, any>
 		: NonNullable<T> extends string | number | boolean | File
 			? (message: string) => StandardSchemaV1.Issue
 			: NonNullable<T> extends Array<infer U>
 				? {
-						[K in number]: InvalidField<U>;
+						[K in number]: LocalFormInvalidField<U>;
 					} & ((message: string) => StandardSchemaV1.Issue)
 				: NonNullable<T> extends LocalFormInput
 					? {
-							[K in keyof T]-?: InvalidField<T[K]>;
+							[K in keyof T]-?: LocalFormInvalidField<T[K]>;
 						} & ((message: string) => StandardSchemaV1.Issue)
 					: Record<string, never>;
 
@@ -283,7 +326,17 @@ export type LocalFormEnhanceCallback<
 /**
  * The type of a local `form` function. Mirrors SvelteKit's `RemoteForm`.
  */
-export type LocalForm<Input extends LocalFormInput | void, Output> = {
+export type LocalForm<Input extends LocalFormInput | void, Output> = LocalForm_<
+	Input,
+	Output,
+	[Input]
+>;
+
+type LocalForm_<
+	Input extends LocalFormInput | void,
+	Output,
+	Original extends [LocalFormInput | void]
+> = {
 	/** Attachment that sets up an event handler that intercepts the form submission */
 	[attachment: symbol]: (node: HTMLFormElement) => void;
 	method: 'POST';
@@ -311,8 +364,13 @@ export type LocalForm<Input extends LocalFormInput | void, Output> = {
 	preflight(schema: StandardSchemaV1<Input, any>): LocalForm<Input, Output>;
 	/** Validate the form contents programmatically */
 	validate(options?: {
-		/** Set this to `true` to also show validation issues of fields that haven't been touched yet. */
-		includeUntouched?: boolean;
+		/**
+		 * Set this to `true` to also show validation issues of fields that haven't yet been
+		 * edited and blurred. This option is ignored for forms that have previously been
+		 * submitted, in which case all fields are always subject to validation
+		 * (unless the form is reset, at which point it is treated as pristine)
+		 */
+		all?: boolean;
 		/** Set this to `true` to only run the `preflight` validation. */
 		preflightOnly?: boolean;
 	}): Promise<void>;
@@ -320,10 +378,10 @@ export type LocalForm<Input extends LocalFormInput | void, Output> = {
 	get result(): Output | undefined;
 	/** The number of pending submissions */
 	get pending(): number;
-	/** True if the form has been submitted at least once */
+	/** True if the form has been submitted at least once, and hasn't been reset since */
 	get submitted(): boolean;
 	/** Access form fields using object notation */
-	fields: LocalFormFieldsRoot<Input>;
+	fields: LocalFormFieldsRoot<Input, Original>;
 };
 
 /**

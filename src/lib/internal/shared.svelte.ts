@@ -203,7 +203,7 @@ export function refresh_keys(keys: Iterable<string>): Promise<void> {
 
 /**
  * Refresh every active query and reconnect every active live query. This is the local
- * equivalent of the `invalidateAll()` a successful SvelteKit form submission performs.
+ * equivalent of the `refreshAll()` a successful SvelteKit form submission performs.
  */
 export function refresh_all(): Promise<void> {
 	const promises: Array<Promise<unknown>> = [];
@@ -221,4 +221,16 @@ export function refresh_all(): Promise<void> {
 	}
 
 	return Promise.all(promises).then(noop);
+}
+
+/**
+ * Causes all currently active local queries to refresh, and all active live queries to
+ * reconnect. Resolves once every refresh has settled (individual failures surface as
+ * the corresponding query's `error`).
+ *
+ * The local equivalent of SvelteKit's `refreshAll()` from `$app/navigation` — there are
+ * no `load` functions to re-run.
+ */
+export function refreshAll(): Promise<void> {
+	return refresh_all();
 }

@@ -206,11 +206,17 @@ const updateTodo = form(v.object({ id: v.string(), text: v.string() }), async (d
 - Spread onto a `<form>`: `<form {...updateTodo}>`.
 - **`fields`** — typed accessors: `fields.text.as('text')` (spreadable input props with
   `name`, coercion prefixes, `aria-invalid`), `.value()`, `.set()`, `.issues()`,
-  `fields.allIssues()`. Nested paths (`fields.user.emails[0]`) work.
+  `.touched()`, `.dirty()`, `fields.allIssues()`. Nested paths (`fields.user.emails[0]`)
+  work. For radio and checkbox options the second argument is the option and the third
+  whether it is checked: `.as('radio', option, settings.visibility === option)`.
+- Every control in the form must be created with `.as(...)` — generated names are bound
+  to their form (`title/<form id>`), and hand-written `name`s are rejected on submit.
 - Schema failures skip the handler and populate `issues()`; `invalid()` +
   the `issue` proxy create issues imperatively.
 - `result`, `pending`, `submitted`, `element`, programmatic `submit()`,
-  `validate({ includeUntouched, preflightOnly })`, `preflight(schema)`.
+  `validate({ all, preflightOnly })`, `preflight(schema)`. Before the first submission,
+  `validate()` only reports fields that have been edited and then blurred; pass
+  `all: true` to report every field. Resetting the form clears `submitted`.
 - `for(key)` creates keyed instances for forms in a loop (`updateTodo.for(todo.id)`),
   injecting the key as `data.id`.
 - `enhance(callback)` customizes submission; combine with `.updates(...)` for
@@ -226,8 +232,8 @@ const updateTodo = form(v.object({ id: v.string(), text: v.string() }), async (d
 ```
 
 By default a successful submission **refreshes all active queries** (the local
-equivalent of kit's `invalidateAll()`); taking control via `.updates(...)` or by
-refreshing/setting queries inside the handler disables that.
+equivalent of kit's `refreshAll()`) before `submit()` resolves; taking control via
+`.updates(...)` or by refreshing/setting queries inside the handler disables that.
 
 ### `init` — app-level hooks
 
@@ -243,15 +249,18 @@ init({
 
 ### Other exports
 
-`redirect(location)`, `isRedirect`, `Redirect`, `invalid(...issues)`,
+`refreshAll()` (refresh every active query and reconnect every live query — kit's
+`refreshAll` from `$app/navigation`), `redirect(location)`, `isRedirect`, `Redirect`,
+`invalid(...issues)`,
 `isValidationError`, `ValidationError`, and the full set of types:
 `LocalQuery`, `LocalQueryFunction`, `LocalCommand`, `LocalForm`, `LocalLiveQuery`,
-`LocalResource`, `LocalFormIssue`, … (structural ports of kit's `Remote*` types).
+`LocalResource`, `LocalFormIssue`, `LocalFormInvalidField`, … (structural ports of kit's
+`Remote*` types).
 
 ## Differences from SvelteKit remote functions
 
 Everything transport-related is gone, and a handful of behaviors necessarily change
-(no `prerender`, no non-JS form fallback, JSON cache keys, direct validation errors,
+(no `prerender`, no non-JS form fallback, JSON cache keys, raw (non-normalized) errors,
 pluggable redirects, …). The complete annotated list lives in
 [DIFFERENCES.md](./DIFFERENCES.md).
 

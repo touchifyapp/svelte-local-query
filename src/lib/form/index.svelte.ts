@@ -16,7 +16,7 @@ import type {
 	LocalFormEnhanceInstance,
 	LocalFormInput,
 	LocalQueryUpdate,
-	InvalidField,
+	LocalFormInvalidField,
 	MaybePromise
 } from '../types.js';
 import {
@@ -27,14 +27,18 @@ import {
 } from '../validation.js';
 import {
 	convert_formdata,
+	coerce_form_value,
 	create_field_proxy,
+	deep_get,
 	deep_set,
 	build_path_string,
 	flatten_issues,
 	normalize_issue,
+	parse_form_key,
 	set_nested_value,
 	DELETE_KEY,
-	type InternalFormIssue
+	type InternalFormIssue,
+	type ParsedFormKey
 } from './form-utils.js';
 
 /*
@@ -61,16 +65,21 @@ function merge_with_server_issues(
 	current_issues: InternalFormIssue[],
 	client_issues: InternalFormIssue[]
 ): InternalFormIssue[] {
+	const client_names = new Set(client_issues.map((issue) => issue.name));
+
 	const merged = [
-		...current_issues.filter(
-			(issue) => issue.server && !client_issues.some((i) => i.name === issue.name)
-		),
+		...current_issues.filter((issue) => issue.server && !client_names.has(issue.name)),
 		...client_issues
 	];
 
-	const keys = Array.from(form_data.keys());
+	const positions = new Map<string, number>();
+	let i = 0;
+	for (const key of form_data.keys()) {
+		if (!positions.has(key)) positions.set(key, i);
+		i++;
+	}
 
-	return merged.sort((a, b) => keys.indexOf(a.name) - keys.indexOf(b.name));
+	return merged.sort((a, b) => (positions.get(a.name) ?? -1) - (positions.get(b.name) ?? -1));
 }
 
 function create_form(
@@ -107,19 +116,25 @@ function create_form(
 			if (await instance.submit()) {
 				await tick();
 				// We call reset from the prototype to avoid DOM clobbering
-				HTMLFormElement.prototype.reset.call(instance.element);
+				if (instance.element.isConnected) {
+					HTMLFormElement.prototype.reset.call(instance.element);
+				}
 			}
 		};
 
 		let element: HTMLFormElement | null = null;
 
-		let touched: Record<string, boolean> = {};
+		let touched = $state<Record<string, boolean>>({});
+
+		let dirty = $state<Record<string, boolean>>({});
+
+		let can_validate: Record<string, boolean> = {};
 
 		let submitted = $state(false);
 
 		let unread_issues: InternalFormIssue[] | null = null;
 
-		let previous_submitter_name: string | null = null;
+		let previous_submitter: ParsedFormKey | null = null;
 
 		/**
 		 * In dev, warn if there are validation issues going unread
@@ -151,8 +166,8 @@ function create_form(
 		}
 
 		function convert(form_data: FormData): Record<string, any> {
-			const data = convert_formdata(form_data);
-			if (key !== undefined && !form_data.has('id')) {
+			const data = convert_formdata(id, form_data);
+			if (key !== undefined && !('id' in data)) {
 				data.id = key;
 			}
 			return data;
@@ -267,7 +282,7 @@ function create_form(
 						if (updates_state.refreshes !== null) {
 							await refresh_keys(updates_state.refreshes);
 						} else if (should_invalidate) {
-							void refresh_all();
+							await refresh_all();
 						}
 
 						if (!apply_redirect(outcome.redirect) && DEV) {
@@ -286,7 +301,7 @@ function create_form(
 						if (updates_state.refreshes !== null) {
 							await refresh_keys(updates_state.refreshes);
 						} else if (should_invalidate) {
-							void refresh_all();
+							await refresh_all();
 						}
 					} else {
 						if (DEV) {
@@ -317,7 +332,7 @@ function create_form(
 			promise.updates = (...args) => {
 				if (updates_called) {
 					console.warn(
-						'Updates can only be applied once per form submission. Ignoring additional updates.'
+						'Updates can only be sent once per form submission. Ignoring additional updates.'
 					);
 					return promise;
 				}
@@ -392,17 +407,14 @@ function create_form(
 
 		instance[createAttachmentKey()] = (form: HTMLFormElement) => {
 			if (element) {
-				let message = `A form object can only be attached to a single \`<form>\` element`;
-				if (DEV && !key) {
-					message += `. To create multiple instances, use \`myForm.for(key)\``;
-				}
-
-				throw new Error(message);
+				throw new Error('A form object can only be attached to a single `<form>` element');
 			}
 
 			element = form;
 
 			touched = {};
+			dirty = {};
+			can_validate = {};
 
 			const handle_submit = async (event: SubmitEvent) => {
 				const form = event.target as HTMLFormElement;
@@ -436,26 +448,29 @@ function create_form(
 				const form_data = new FormData(form, event.submitter);
 
 				if (
-					previous_submitter_name !== null &&
-					!Array.from(form_data.keys()).map(strip_prefix).includes(previous_submitter_name)
+					previous_submitter !== null &&
+					!Array.from(form_data.keys())
+						.map((k) => parse_form_key(id, k).name)
+						.includes(previous_submitter.name)
 				) {
-					// Strip any `n:`/`b:` type prefix before clearing, otherwise
-					// `set_nested_value` would coerce `undefined` to `NaN`/`false`
-					// instead of clearing the previously-submitted value.
-					set_nested_value(input, previous_submitter_name, undefined);
+					set_nested_value(input, previous_submitter, undefined);
 				}
 
-				if (event.submitter) {
+				if (event.submitter && (event.submitter as HTMLInputElement).type !== 'image') {
 					const name = event.submitter.getAttribute('name');
+
+					let submitter: ParsedFormKey | null = null;
+
 					const value = (event.submitter as HTMLButtonElement).value;
 
 					if (name !== null && value !== undefined) {
-						set_nested_value(input, name, value);
+						submitter = parse_form_key(id, name);
+						set_nested_value(input, submitter, coerce_form_value(submitter.type, value));
 					}
 
-					previous_submitter_name = strip_prefix(name);
+					previous_submitter = submitter;
 				} else {
-					previous_submitter_name = null;
+					previous_submitter = null;
 				}
 
 				if (DEV) {
@@ -487,22 +502,19 @@ function create_form(
 				}
 			};
 
-			const handle_input = (e: Event) => {
+			const handle_input = (event: Event) => {
 				// strictly speaking it can be an HTMLTextAreaElement or HTMLSelectElement
 				// but that makes the types unnecessarily awkward
-				const element = e.target as HTMLInputElement;
+				const element = event.target as HTMLInputElement;
 
-				let name = element.name;
+				const name = element.name;
 				if (!name) return;
 
-				const is_array = name.endsWith('[]');
-				if (is_array) name = name.slice(0, -2);
+				const field = parse_form_key(id, name);
 
 				const is_file = element.type === 'file';
 
-				touched[name] = true;
-
-				if (is_array) {
+				if (field.is_array) {
 					let value;
 
 					if (element.tagName === 'SELECT') {
@@ -512,14 +524,14 @@ function create_form(
 						);
 					} else {
 						const elements = Array.from(
-							form.querySelectorAll(`[name="${name}[]"]`)
+							form.querySelectorAll(`[name="${name}"]`)
 						) as HTMLInputElement[];
 
 						if (DEV) {
-							for (const e of elements) {
-								if ((e.type === 'file') !== is_file) {
+							for (const input of elements) {
+								if ((input.type === 'file') !== is_file) {
 									throw new Error(
-										`Cannot mix and match file and non-file inputs under the same name ("${element.name}")`
+										`Cannot mix and match file and non-file inputs under the same name (\`${element.name}\`)`
 									);
 								}
 							}
@@ -533,32 +545,33 @@ function create_form(
 						}
 					}
 
-					set_nested_value(input, name, value);
+					set_nested_value(input, field, is_file ? value : coerce_form_value(field.type, value));
 				} else if (is_file) {
 					if (DEV && element.multiple) {
 						throw new Error(
-							`Can only use the \`multiple\` attribute when \`name\` includes a \`[]\` suffix — consider changing "${name}" to "${name}[]"`
+							`Can only use the \`multiple\` attribute when \`name\` includes a \`[]\` suffix — consider changing \`${name}\` to \`${name}[]\``
 						);
 					}
 
 					const file = element.files?.[0];
 
 					if (file) {
-						set_nested_value(input, name, file);
+						set_nested_value(input, field, file);
 					} else {
-						set_nested_value(input, name, DELETE_KEY);
+						set_nested_value(input, field, DELETE_KEY);
 					}
 				} else {
 					set_nested_value(
 						input,
-						name,
-						element.type === 'checkbox' && !element.checked ? null : element.value
+						field,
+						coerce_form_value(
+							field.type,
+							element.type === 'checkbox' && !element.checked ? null : element.value
+						)
 					);
 				}
 
-				name = strip_prefix(name);
-
-				touched[name] = true;
+				dirty[field.name] = true;
 			};
 
 			const handle_reset = async () => {
@@ -566,18 +579,36 @@ function create_form(
 				// the inputs are actually updated (so that it can be cancelled)
 				await tick();
 
-				input = convert_formdata(new FormData(form));
+				input = convert_formdata(id, new FormData(form));
 				raw_issues = [];
 				touched = {};
+				dirty = {};
+				can_validate = {};
+				submitted = false;
+			};
+
+			const handle_focusout = (event: Event) => {
+				const name = (event.target as HTMLInputElement).name;
+				if (!name) return;
+
+				const field = parse_form_key(id, name);
+
+				touched[field.name] = true;
+
+				if (Object.hasOwn(dirty, field.name)) {
+					can_validate[field.name] = true;
+				}
 			};
 
 			form.addEventListener('submit', handle_submit);
 			form.addEventListener('input', handle_input);
+			form.addEventListener('focusout', handle_focusout);
 			form.addEventListener('reset', handle_reset);
 
 			return () => {
 				form.removeEventListener('submit', handle_submit);
 				form.removeEventListener('input', handle_input);
+				form.removeEventListener('focusout', handle_focusout);
 				form.removeEventListener('reset', handle_reset);
 				element = null;
 			};
@@ -595,8 +626,9 @@ function create_form(
 						throw new Error('Cannot call submit() before the form is attached');
 					}
 
-					const default_submitter = element.querySelector('button:not([type]), [type="submit"]') as
-						HTMLElement | undefined;
+					const default_submitter = element.querySelector(
+						'button:not([type]), [type="submit"], [type="image"]'
+					) as HTMLElement | undefined;
 
 					const form_data = new FormData(element, default_submitter);
 
@@ -619,20 +651,25 @@ function create_form(
 			},
 			fields: {
 				get: () =>
-					create_field_proxy(
-						{},
-						() => input,
-						(path, value) => {
+					create_field_proxy({
+						form_id: id,
+						get: () => input,
+						set: (path, value) => {
 							if (path.length === 0) {
 								input = value;
-							} else {
+							} else if (value !== deep_get(input, path)) {
 								deep_set(input, path.map(String), value);
 
 								const key = build_path_string(path);
-								touched[key] = true;
+
+								if (element) {
+									touched[key] = true;
+									dirty[key] = true;
+									can_validate[key] = true;
+								}
 							}
 						},
-						(path, all) => {
+						get_issues: (path, all) => {
 							if (DEV && unread_issues !== null && path !== undefined) {
 								unread_issues = unread_issues.filter((issue) => {
 									return (
@@ -643,8 +680,10 @@ function create_form(
 							}
 
 							return issues;
-						}
-					)
+						},
+						get_touched: () => touched,
+						get_dirty: () => dirty
+					})
 			},
 			result: {
 				get: () => result
@@ -667,17 +706,19 @@ function create_form(
 				}
 			},
 			validate: {
-				value: async ({ includeUntouched = false, preflightOnly = false } = {}) => {
-					if (!element) return;
-
+				value: async ({ all = false, preflightOnly = false } = {}) => {
 					const validation_id = ++validate_id;
 
 					// wait a tick in case the user is calling validate() right after set()
 					// which takes time to propagate
 					await tick();
 
-					const default_submitter = element.querySelector('button:not([type]), [type="submit"]') as
-						HTMLElement | undefined;
+					// the form may have been removed from the DOM while we were waiting
+					if (!element) return;
+
+					const default_submitter = element.querySelector(
+						'button:not([type]), [type="submit"], [type="image"]'
+					) as HTMLElement | undefined;
 
 					const form_data = new FormData(element, default_submitter);
 
@@ -711,8 +752,8 @@ function create_form(
 						}
 					}
 
-					if (!includeUntouched && !submitted) {
-						array = array.filter((issue) => touched[issue.name]);
+					if (!all && !submitted) {
+						array = array.filter((issue) => can_validate[issue.name]);
 					}
 
 					raw_issues = is_schema_validation
@@ -739,19 +780,19 @@ function create_form(
 
 			try {
 				$effect.pre(() => {
+					entry.count += 1;
+					instances.set(key, entry);
+
 					return () => {
 						entry.count--;
 
 						void tick().then(() => {
-							if (entry.count === 0) {
+							if (entry.count === 0 && instances.get(key) === entry) {
 								instances.delete(key);
 							}
 						});
 					};
 				});
-
-				entry.count += 1;
-				instances.set(key, entry);
 			} catch {
 				// not in an effect context
 			}
@@ -784,18 +825,11 @@ function validate_form_data(form_data: FormData, enctype: string): void {
 		for (const value of form_data.values()) {
 			if (value instanceof File) {
 				throw new Error(
-					'Your form contains <input type="file"> fields, but is missing the necessary `enctype="multipart/form-data"` attribute.'
+					'Your form contains `<input type="file">` fields, but is missing the necessary `enctype="multipart/form-data"` attribute'
 				);
 			}
 		}
 	}
-}
-
-/**
- * Remove the `n:` or `b:` prefix from a field name
- */
-function strip_prefix<T extends string | null>(name: T): T {
-	return (name && name.replace(/^[nb]:/, '')) as T;
 }
 
 type InferOutput<Schema extends StandardSchemaV1> = StandardSchemaV1.InferOutput<Schema>;
@@ -815,13 +849,16 @@ type InferInput<Schema extends StandardSchemaV1> = StandardSchemaV1.InferInput<S
 export function form<Output>(fn: () => MaybePromise<Output>): LocalForm<void, Output>;
 export function form<Input extends LocalFormInput, Output>(
 	validate: 'unchecked',
-	fn: (data: Input, issue: InvalidField<Input>) => MaybePromise<Output>
+	fn: (data: Input, issue: LocalFormInvalidField<Input>) => MaybePromise<Output>
 ): LocalForm<Input, Output>;
 export function form<Schema extends StandardSchemaV1<LocalFormInput, Record<string, any>>, Output>(
 	validate: true extends HasNonOptionalBoolean<InferInput<Schema>>
-		? 'Error: All booleans in form schemas must be optional (e.g. `v.optional(v.boolean(), false)`) because checkbox inputs do not send a false value when unchecked.'
+		? 'Error: Boolean fields in form schemas that accept false must be optional (e.g. `v.optional(v.boolean(), false)`) because checkbox inputs do not send a false value when unchecked.'
 		: Schema,
-	fn: (data: InferOutput<Schema>, issue: InvalidField<InferInput<Schema>>) => MaybePromise<Output>
+	fn: (
+		data: InferOutput<Schema>,
+		issue: LocalFormInvalidField<InferInput<Schema>>
+	) => MaybePromise<Output>
 ): LocalForm<InferInput<Schema>, Output>;
 export function form(
 	validate_or_fn: Validator | ((data?: any, issue?: any) => unknown),

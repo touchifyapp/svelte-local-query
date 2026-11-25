@@ -80,6 +80,35 @@ test.describe('form', () => {
 	});
 });
 
+test.describe('form validation', () => {
+	test('as-you-type validation waits until the field has been edited and blurred', async ({
+		page
+	}) => {
+		const email = page.getByTestId('email');
+		const state = page.getByTestId('email-state');
+		const issue = page.getByTestId('email-issue');
+
+		await expect(state).toHaveText('touched: false, dirty: false');
+
+		// typing alone does not surface issues yet
+		await email.fill('not-an-email');
+		await expect(state).toHaveText('touched: false, dirty: true');
+		await expect(issue).toHaveCount(0);
+
+		// blurring an edited field makes it eligible for validation
+		await email.blur();
+		await expect(state).toHaveText('touched: true, dirty: true');
+		await expect(issue).toHaveText('Please enter a valid email');
+
+		// fixing it clears the issue as you type
+		await email.fill('me@example.com');
+		await expect(issue).toHaveCount(0);
+
+		await page.getByTestId('subscribe').click();
+		await expect(page.getByTestId('subscribed')).toHaveText('subscribed: me@example.com');
+	});
+});
+
 test.describe('query.live', () => {
 	test('streams values and reports connection state', async ({ page }) => {
 		const ticks = page.getByTestId('ticks');
